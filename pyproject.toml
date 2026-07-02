@@ -1,0 +1,80 @@
+[project]
+name = "failfast-developer-mcp"
+version = "0.1.0"
+description = "A Python-first MCP production-readiness reviewer. Enforces security, reliability, maintainability, and API correctness before code reaches production."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [{ name = "MErblin" }]
+keywords = ["mcp", "code-quality", "production-readiness", "static-analysis", "python"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+]
+
+dependencies = [
+    "mcp[cli]>=1.9.0",
+    "click>=8.1.0",
+    "rich>=13.0.0",
+    "ruff>=0.12.0",
+    "bandit>=1.8.0",
+    "radon>=6.0.0",
+]
+
+[project.scripts]
+failfast = "failfast.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/MErblin/failfast-developer-mcp"
+Repository = "https://github.com/MErblin/failfast-developer-mcp"
+Issues = "https://github.com/MErblin/failfast-developer-mcp/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/failfast"]
+
+# --- Tool Configuration ---
+
+[tool.ruff]
+src = ["src", "tests"]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "TCH",  # flake8-type-checking
+    "RUF",  # ruff-specific rules
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
