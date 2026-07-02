@@ -143,6 +143,51 @@ RULE_CATALOG: dict[str, dict[str, object]] = {
         "severity": "medium",
         "category": "maintainability",
     },
+    "FF-AI-RUNAWAY": {
+        "title": "Agent Runaway Loop",
+        "description": "Agent loop calling LLMs/tool chains without a maximum iteration guard.",
+        "why": "Unbounded loops can execute infinitely if the agent hallucinates or loops back, generating large token costs and crashing threads.",
+        "fix": "Initialize a counter (e.g. `steps = 0`) before the loop, increment it inside, and break or raise if `steps >= max_steps`.",
+        "standard_refs": ["OWASP LLM06:2023 - Excessive Agency", "AWS Well-Architected Reliability"],
+        "severity": "high",
+        "category": "ai_safety",
+    },
+    "FF-AI-BEDROCK-GUARD": {
+        "title": "Missing Amazon Bedrock Guardrails",
+        "description": "Bedrock model invocation call missing guardrailIdentifier or guardrailVersion.",
+        "why": "Model requests without explicit guardrails skip corporate filters for PII masking, safety compliance, and poison checks.",
+        "fix": "Pass `guardrailIdentifier` and `guardrailVersion` parameters to the Bedrock client call.",
+        "standard_refs": ["OWASP LLM02:2023 - Sensitive Information Disclosure", "NIST AI RMF"],
+        "severity": "high",
+        "category": "ai_safety",
+    },
+    "FF-AI-VERTEX-SAFETY": {
+        "title": "Missing Vertex AI Safety Settings",
+        "description": "Vertex AI GenerativeModel instantiation missing explicit safety_settings.",
+        "why": "Generative models without safety settings inherit permissive default filters, allowing adversarial queries or harmful content to slip through.",
+        "fix": "Pass `safety_settings` keyword to `GenerativeModel` client calls.",
+        "standard_refs": ["OWASP LLM01:2023 - Prompt Injection", "GCP Enterprise AI Guidance"],
+        "severity": "high",
+        "category": "ai_safety",
+    },
+    "FF-AI-AZURE-VERSION": {
+        "title": "Unsafe Azure OpenAI API Version",
+        "description": "AzureOpenAI client initialized with deprecated or missing api_version parameter.",
+        "why": "Running deprecated API versions faces complete backend service shutdown from Azure model endpoints.",
+        "fix": "Specify a stable api_version parameter (e.g., '2024-02-01' or newer).",
+        "standard_refs": ["OWASP Top 10 A06:2021-Vulnerable and Outdated Components"],
+        "severity": "high",
+        "category": "ai_safety",
+    },
+    "FF-AI-RAWPARSING": {
+        "title": "Unsafe LLM Output Parsing",
+        "description": "Calling json.loads on a raw LLM output variable without wrapping it in a try-except block.",
+        "why": "LLM completions are probabilistic and can output markdown wrappers or invalid text formats, throwing a runtime JSONDecodeError.",
+        "fix": "Wrap json.loads calls in a try-except JSONDecodeError block, or use structured output models.",
+        "standard_refs": ["OWASP LLM05:2023 - Improper Output Handling"],
+        "severity": "high",
+        "category": "ai_safety",
+    },
 }
 
 
@@ -185,6 +230,27 @@ def _get_all_analyzers() -> list[Analyzer]:
         analyzers.append(RetryAnalyzer())
     except ImportError:
         logger.warning("RetryAnalyzer not available — skipping.")
+
+    try:
+        from failfast.analyzers.ai_loops import AgentLoopAnalyzer
+
+        analyzers.append(AgentLoopAnalyzer())
+    except ImportError:
+        logger.warning("AgentLoopAnalyzer not available — skipping.")
+
+    try:
+        from failfast.analyzers.ai_providers import ProviderConfigAnalyzer
+
+        analyzers.append(ProviderConfigAnalyzer())
+    except ImportError:
+        logger.warning("ProviderConfigAnalyzer not available — skipping.")
+
+    try:
+        from failfast.analyzers.ai_parsing import OutputParsingAnalyzer
+
+        analyzers.append(OutputParsingAnalyzer())
+    except ImportError:
+        logger.warning("OutputParsingAnalyzer not available — skipping.")
 
     return analyzers
 
@@ -382,6 +448,7 @@ def run_check(context: AnalysisContext, category: Category) -> CategoryResult:
         Category.API_QUALITY: [],  # Future: FastAPI-specific analyzers
         Category.MAINTAINABILITY: ["Ruff", "ComplexityAnalyzer"],
         Category.DEPENDENCIES: [],  # Future: pip-audit
+        Category.AI_SAFETY: ["AgentLoopAnalyzer", "ProviderConfigAnalyzer", "OutputParsingAnalyzer"],
     }
 
     relevant_names = category_analyzer_map.get(category, [])

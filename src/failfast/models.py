@@ -24,6 +24,7 @@ class Category(enum.Enum):
     API_QUALITY = "api_quality"
     MAINTAINABILITY = "maintainability"
     DEPENDENCIES = "dependencies"
+    AI_SAFETY = "ai_safety"
 
 
 class Verdict(enum.Enum):
