@@ -188,6 +188,51 @@ RULE_CATALOG: dict[str, dict[str, object]] = {
         "severity": "high",
         "category": "ai_safety",
     },
+    "FF-AI-OBSERVABILITY": {
+        "title": "Missing AI Observability Tracing",
+        "description": "LLM client interactions occur without configured observability SDKs or environment tracing.",
+        "why": "Production AI flows must track prompt/completion tokens, latency, cost, and tool execution. Lacking logs makes debugging impossible.",
+        "fix": "Import and initialize a tracer like Langsmith, Langfuse, or OpenTelemetry, or configure environment tracing variables.",
+        "standard_refs": ["OWASP LLM09:2023 - Overreliance", "Production LLM Observability Guide"],
+        "severity": "medium",
+        "category": "ai_safety",
+    },
+    "FF-AI-GUARDRAILS": {
+        "title": "Missing Input/Output Guardrails",
+        "description": "Passing variables directly to prompts or outputting model texts without verification steps.",
+        "why": "Adversarial prompts can manipulate model behavior, and hallucinated answers can corrupt databases. Validating schemas protects execution.",
+        "fix": "Use a guardrail package (e.g. Guardrails AI) or Structured Outputs via Pydantic model parsing.",
+        "standard_refs": ["OWASP LLM01:2023 - Prompt Injection", "OWASP LLM05:2023 - Improper Output Handling"],
+        "severity": "medium",
+        "category": "ai_safety",
+    },
+    "FF-AI-PROMPT-INLINE": {
+        "title": "Hardcoded Prompt Template",
+        "description": "Large prompt templates hardcoded as inline string constants inside code logic.",
+        "why": "Inline prompts make tuning, versioning, and running evaluation runs difficult. Decoupling prompts from logic separates concerns.",
+        "fix": "Load prompt templates from external text, JSON, or YAML config files.",
+        "standard_refs": ["LLM Application Architecture Patterns"],
+        "severity": "medium",
+        "category": "ai_safety",
+    },
+    "FF-AI-CACHE": {
+        "title": "Missing Completion Caching",
+        "description": "LLM completions invoked repeatedly without caching middleware.",
+        "why": "Repeated queries to model providers generate duplicate costs and latency. Cache structures reduce costs and increase speeds.",
+        "fix": "Initialize caching (e.g. GPTCache or Redis) to wrap completion handlers.",
+        "standard_refs": ["AWS Well-Architected Cost Optimization", "Google Enterprise AI Best Practices"],
+        "severity": "medium",
+        "category": "ai_safety",
+    },
+    "FF-AI-FALLBACK": {
+        "title": "Missing Provider Fallback Policy",
+        "description": "LLM call nodes running without catch-and-switch failover routes.",
+        "why": "API limits or backend provider downtime will break execution. Call sites should fall back to secondary models or backup providers.",
+        "fix": "Execute a secondary model/provider call inside the try-except handler of the primary LLM call.",
+        "standard_refs": ["AWS Well-Architected: Reliability Pillar", "Enterprise AI HA Patterns"],
+        "severity": "medium",
+        "category": "ai_safety",
+    },
 }
 
 
@@ -251,6 +296,41 @@ def _get_all_analyzers() -> list[Analyzer]:
         analyzers.append(OutputParsingAnalyzer())
     except ImportError:
         logger.warning("OutputParsingAnalyzer not available — skipping.")
+
+    try:
+        from failfast.analyzers.ai_observability import TelemetryAnalyzer
+
+        analyzers.append(TelemetryAnalyzer())
+    except ImportError:
+        logger.warning("TelemetryAnalyzer not available — skipping.")
+
+    try:
+        from failfast.analyzers.ai_guardrails import GuardrailsAnalyzer
+
+        analyzers.append(GuardrailsAnalyzer())
+    except ImportError:
+        logger.warning("GuardrailsAnalyzer not available — skipping.")
+
+    try:
+        from failfast.analyzers.ai_prompts import PromptInlineAnalyzer
+
+        analyzers.append(PromptInlineAnalyzer())
+    except ImportError:
+        logger.warning("PromptInlineAnalyzer not available — skipping.")
+
+    try:
+        from failfast.analyzers.ai_cache import CacheAnalyzer
+
+        analyzers.append(CacheAnalyzer())
+    except ImportError:
+        logger.warning("CacheAnalyzer not available — skipping.")
+
+    try:
+        from failfast.analyzers.ai_fallback import FallbackAnalyzer
+
+        analyzers.append(FallbackAnalyzer())
+    except ImportError:
+        logger.warning("FallbackAnalyzer not available — skipping.")
 
     return analyzers
 
@@ -448,7 +528,16 @@ def run_check(context: AnalysisContext, category: Category) -> CategoryResult:
         Category.API_QUALITY: [],  # Future: FastAPI-specific analyzers
         Category.MAINTAINABILITY: ["Ruff", "ComplexityAnalyzer"],
         Category.DEPENDENCIES: [],  # Future: pip-audit
-        Category.AI_SAFETY: ["AgentLoopAnalyzer", "ProviderConfigAnalyzer", "OutputParsingAnalyzer"],
+        Category.AI_SAFETY: [
+            "AgentLoopAnalyzer",
+            "ProviderConfigAnalyzer",
+            "OutputParsingAnalyzer",
+            "TelemetryAnalyzer",
+            "GuardrailsAnalyzer",
+            "PromptInlineAnalyzer",
+            "CacheAnalyzer",
+            "FallbackAnalyzer",
+        ],
     }
 
     relevant_names = category_analyzer_map.get(category, [])
