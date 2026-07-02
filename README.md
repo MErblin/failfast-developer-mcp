@@ -30,6 +30,7 @@ Every finding maps to an industry standard — OWASP, NIST, RFC 9457, AWS Well-A
 | **Security** | Bandit findings mapped to OWASP Top 10 | OWASP Top 10, Secure Coding Practices |
 | **Reliability** | HTTP calls without timeouts, unsafe retry patterns (no jitter, no max attempts, thundering herd risk) | AWS Backoff & Jitter, OWASP API4:2023 |
 | **Maintainability** | Cyclomatic complexity > 15, Ruff lint violations | McCabe Metric, NIST SSDF PW.5 |
+| **AI Safety** | Unbounded agent loops (ReAct/Reflexion), missing cloud safety/guardrails (Bedrock, Vertex, Azure OpenAI), raw LLM output parsing, missing observability tracing (Langsmith, Langfuse), lack of caching, and absent fallback policies. | OWASP Top 10 for LLMs (LLM01-LLM09), AWS/GCP Enterprise AI Guides |
 | **API Quality** | _(Roadmap: RFC 9457 error contracts, auth checks)_ | RFC 9457, OWASP ASVS |
 | **Dependencies** | _(Roadmap: pip-audit integration)_ | OpenSSF Scorecard |
 
@@ -166,7 +167,15 @@ failfast-developer-mcp/
 │   │   ├── bandit.py          # Bandit security wrapper + OWASP mapping
 │   │   ├── complexity.py      # Radon CC wrapper
 │   │   ├── timeout.py    ★    # Custom AST: HTTP calls without timeout
-│   │   └── retry.py      ★    # Custom AST: unsafe retry patterns
+│   │   ├── retry.py      ★    # Custom AST: unsafe retry patterns
+│   │   ├── ai_loops.py   ★    # Custom AST: runaway agent loops (unbounded loops)
+│   │   ├── ai_providers.py ★   # Custom AST: Bedrock / Vertex / Azure config guardrails
+│   │   ├── ai_parsing.py ★    # Custom AST: unsafe LLM JSON loads parsing
+│   │   ├── ai_observability.py ★ # Custom AST: missing AI tracing (Langfuse, Langsmith)
+│   │   ├── ai_guardrails.py ★  # Custom AST: missing model input/output guardrails
+│   │   ├── ai_prompts.py ★     # Custom AST: hardcoded inline prompt templates
+│   │   ├── ai_cache.py   ★    # Custom AST: missing LLM completion caching
+│   │   └── ai_fallback.py ★    # Custom AST: missing high-availability fallbacks
 │   └── reporters/
 │       ├── json_reporter.py   # Structured JSON
 │       ├── markdown_reporter.py # Human-readable reports
@@ -179,7 +188,7 @@ failfast-developer-mcp/
     └── test_reporters.py      # Reporter tests
 ```
 
-**★ Custom AST analyzers** — These are the differentiators. Ruff and Bandit don't catch missing HTTP timeouts or unsafe retry patterns (thundering herd, infinite loops, no jitter). FailFast does.
+**★ Custom AST analyzers** — These are the differentiators. Ruff and Bandit don't catch missing HTTP timeouts, unsafe retry patterns, or AI/agentic vulnerabilities (runaway loops, missing guardrails, un-cached completions, lack of tracing/telemetry, and inline prompts). FailFast does.
 
 ### How Analyzers Work
 
@@ -208,6 +217,11 @@ FailFast doesn't replace those tools — it **integrates them** and adds what th
 | Standards mapping (OWASP/NIST) | ❌ | Partial | Partial | **✅** |
 | Production-readiness verdict | ❌ | ❌ | ✅ | **✅** |
 | MCP integration for IDEs/editors | ❌ | ❌ | ✅ | **✅** |
+| Unbounded agent loops check | ❌ | ❌ | ❌ | **✅** |
+| AI Cloud Guardrails validation | ❌ | ❌ | ❌ | **✅** |
+| Unsafe LLM output parsing | ❌ | ❌ | ❌ | **✅** |
+| Missing LLM tracing/observability | ❌ | ❌ | ❌ | **✅** |
+| Missing LLM fallbacks/caching | ❌ | ❌ | ❌ | **✅** |
 | Free & open source | ✅ | ✅ | Freemium | **✅** |
 
 ## Roadmap
